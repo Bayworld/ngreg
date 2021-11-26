@@ -1,38 +1,40 @@
-if (process.env.NODE_ENV !== 'production') {
-  require('dotenv').config()
+if (process.env.NODE_ENV !== "production") {
+  require("dotenv").config();
 }
 
-const express = require('express')
-const app = express()
-const bcrypt = require('bcrypt')
-const passport = require('passport')
-const flash = require('express-flash')
-const session = require('express-session')
-const methodOverride = require('method-override')
+const express = require("express");
+const app = express();
+const bcrypt = require("bcrypt");
+const passport = require("passport");
+const flash = require("express-flash");
+const session = require("express-session");
+const methodOverride = require("method-override");
 
-const initializePassport = require('./passport-config')
+const initializePassport = require("./passport-config");
 initializePassport(
   passport,
-  email => users.find(user => user.email === email),
-  id => users.find(user => user.id === id)
-)
+  (email) => users.find((user) => user.email === email),
+  (id) => users.find((user) => user.id === id)
+);
 
-const users = []
+const users = [];
 
-app.set('view-engine', 'ejs')
-app.use(express.urlencoded({ extended: false }))
-app.use(flash())
-app.use(session({
-  secret: process.env.SESSION_SECRET,
-  resave: false,
-  saveUninitialized: false
-}))
-app.use(passport.initialize())
-app.use(passport.session())
-app.use(methodOverride('_method'))
+app.set("view-engine", "ejs");
+app.use(express.urlencoded({ extended: false }));
+app.use(flash());
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET || "someComplicatedSecret",
+    resave: false,
+    saveUninitialized: false,
+  })
+);
+app.use(passport.initialize());
+app.use(passport.session());
+app.use(methodOverride("_method"));
 
 // Static Files
-app.use(express.static('public'));
+app.use(express.static("public"));
 // Specific folder example
 //  app.use('/css', express.static(__dirname + 'public/assets'))
 //  app.use('/js', express.static(__dirname + 'public/js'))
@@ -41,88 +43,81 @@ app.use(express.static('public'));
 //  app.use('/fonts', express.static(__dirname + 'public/fonts'))
 //  app.use('/vendor', express.static(__dirname + 'public/vendor'))
 
+app.get("/staff12", (req, res) => {
+  res.sendFile(__dirname + "/views/staff12.html");
+});
 
+app.get("/home", (req, res) => {
+  res.sendFile(__dirname + "/views/home.html");
+});
 
+app.get("/inmate", (req, res) => {
+  res.sendFile(__dirname + "/views/inmate.html");
+});
 
-app.get('/staff12', (req, res) => {
- res.sendFile(__dirname + '/views/staff12.html')
-})
+app.get("/visitors", (req, res) => {
+  res.sendFile(__dirname + "/views/visitors.html");
+});
 
-app.get('/home', (req, res) => {
-  res.sendFile(__dirname + '/views/home.html')
-})
+app.get("/calendar", (req, res) => {
+  res.sendFile(__dirname + "/views/calendar.html");
+});
 
+app.get("/", checkAuthenticated, (req, res) => {
+  res.render("index.ejs", { name: req.user.name });
+});
 
-app.get('/inmate', (req, res) => {
-  res.sendFile(__dirname + '/views/inmate.html')
-})
+app.get("/login", checkNotAuthenticated, (req, res) => {
+  res.render("login.ejs");
+});
 
+app.post(
+  "/login",
+  checkNotAuthenticated,
+  passport.authenticate("local", {
+    successRedirect: "/",
+    failureRedirect: "/login",
+    failureFlash: true,
+  })
+);
 
-app.get('/visitors', (req, res) => {
-  res.sendFile(__dirname + '/views/visitors.html')
-})
+app.get("/register", checkNotAuthenticated, (req, res) => {
+  res.render("register.ejs");
+});
 
-
-app.get('/calendar', (req, res) => {
-  res.sendFile(__dirname + '/views/calendar.html')
-})
-
-
-
-
-
-app.get('/', checkAuthenticated, (req, res) => {
-  res.render('index.ejs', { name: req.user.name })
-})
-
-app.get('/login', checkNotAuthenticated, (req, res) => {
-  res.render('login.ejs')
-})
-
-app.post('/login', checkNotAuthenticated, passport.authenticate('local', {
-  successRedirect: '/',
-  failureRedirect: '/login',
-  failureFlash: true
-}))
-
-app.get('/register', checkNotAuthenticated, (req, res) => {
-  res.render('register.ejs')
-})
-
-app.post('/register', checkNotAuthenticated, async (req, res) => {
+app.post("/register", checkNotAuthenticated, async (req, res) => {
   try {
-    const hashedPassword = await bcrypt.hash(req.body.password, 10)
+    const hashedPassword = await bcrypt.hash(req.body.password, 10);
     users.push({
       id: Date.now().toString(),
       name: req.body.name,
       email: req.body.email,
-      password: hashedPassword
-    })
-    res.redirect('/login')
+      password: hashedPassword,
+    });
+    res.redirect("/login");
   } catch {
-    res.redirect('/register')
+    res.redirect("/register");
   }
-})
+});
 
-app.delete('/logout', (req, res) => {
-  req.logOut()
-  res.redirect('/login')
-})
+app.delete("/logout", (req, res) => {
+  req.logOut();
+  res.redirect("/login");
+});
 
 function checkAuthenticated(req, res, next) {
   if (req.isAuthenticated()) {
-    return next()
+    return next();
   }
 
-  res.redirect('/login')
+  res.redirect("/login");
 }
 
 function checkNotAuthenticated(req, res, next) {
   if (req.isAuthenticated()) {
-    return res.redirect('/')
+    return res.redirect("/");
   }
-  next()
+  next();
 }
 
-app.listen(3000)
-
+app.listen(process.env.PORT || 3000);
